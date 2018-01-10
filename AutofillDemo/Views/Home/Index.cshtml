@@ -1,0 +1,171 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<style>
+    .autofill {
+        position: relative;
+    }
+
+    .autofill,
+    .autofill input {
+        background: none;
+        display: block;
+        padding: 5px 10px;
+    }
+
+    .autofill .autofill-text {
+        font-weight: normal;
+        color: #999;
+        height: 30px;
+        font-size: 12px;
+        line-height: 1.5;
+        /* strictly for placement purposes */
+        padding-left: 1px;
+    }
+
+    .autofill input {
+        left: 0;
+        position: absolute;
+        /* strictly for placement purposes */
+        top: 1px;
+    }
+</style>
+@using (Html.BeginForm())
+{
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                @Html.Label("Company", "Company:")
+                @Html.TextBox("CompanyTextBox", String.Empty, new
+                {
+                    @class = "form-control input-sm"
+                })
+                <p class="help-block">Enter the company name (i.e. Apple, Microsoft).</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                @Html.Label("New Company", "New Company:")
+                <span class="autofill">
+                    <span class="autofill-text"></span>
+                    @Html.TextBox("CompanyPlaceholder", String.Empty, new
+                    {
+                        @class = "form-control input-sm"
+                    })
+                </span>
+                <p class="help-block">Enter the company name (i.e. Apple, Microsoft).</p>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts
+    {
+    <script>
+
+        $.fn.delayKeyup = function (n, t) {
+            var i = 0;
+            return $(this).keyup(function (kue) {
+                kue.preventDefault();
+                clearTimeout(i);
+                i = setTimeout(n, t);
+            }),
+                $(this)
+        };
+
+        $.fn.selectRange = function (start, end) {
+            return this.each(function () {
+                if (this.setSelectionRange) {
+                    this.focus();
+                    this.setSelectionRange(start, end);
+                } else if (this.createTextRange) {
+                    var range = this.createTextRange();
+                    range.collapse(true);
+                    range.moveEnd('character', end);
+                    range.moveStart('character', start);
+                    range.select();
+                }
+            });
+        };
+
+        $(function () {
+
+            // 1. Use highlighted/selected characters in the textbox.
+            var company = $("#CompanyTextBox");
+
+            $(company).delayKeyup(function () {
+                var partialCompanyName = $(company).val();
+
+                // if there's nothing there, don't do anything.
+                if (partialCompanyName.length === 0) {
+                    return false;
+                }
+
+                // grab company names based on the partial
+                $.getJSON("/api/Services/" + partialCompanyName)
+                    .done(function (data) {
+                        if (data) {
+                            var returnedCompany = data[0];
+
+                            // Remaining highlighted characters
+                            $(company).val(returnedCompany);
+                            $(company).selectRange(partialCompanyName.length,
+                                returnedCompany.length);
+                        }
+                    })
+                    .fail(function () {
+                        console.log("error");
+                    });
+            }, 1000);
+
+
+            // 2. Use a grayed out "placeholder"
+            var company2 = $("#CompanyPlaceholder");
+
+            $(company2).delayKeyup(function () {
+
+                $(".autofill-text").html("");
+
+                var partialCompanyName = $(company2).val();
+
+                // if there's nothing there, don't do anything.
+                if (partialCompanyName.length === 0) {
+                    return false;
+                }
+
+                // grab company names based on the partial
+                $.getJSON("/api/Services/" + partialCompanyName)
+                    .done(function (data) {
+                        if (data) {
+                            var returnedCompany = data[0];
+
+                            var upperLowerVendor = returnedCompany.substr(0, partialCompanyName.length);
+
+                            $(company2).val(upperLowerVendor);
+                            $(".autofill-text").html(returnedCompany);
+                        }
+                    })
+                    .fail(function () {
+                        console.log("error");
+                    });
+            }, 1000);
+
+            $(company2).keypress(function() {
+                $(".autofill-text").html("");
+            });
+            
+            $(company2).blur(function () {
+                var companyName = $(".autofill-text").html();
+                if (companyName !== "") {
+                    $(company2).val(companyName);
+                }
+            });
+
+        });
+
+    </script>
+}
